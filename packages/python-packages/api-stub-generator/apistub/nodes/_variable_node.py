@@ -21,6 +21,18 @@ class VariableNode(NodeEntityBase):
         """Generates token for the node
         :param ApiView apiview: apiview
         """
+        if self.name in ["api_key", "api_key_path", "organization", "api_base", "api_type", "api_version", "verify_ssl_certs", "proxy",
+                           "app_info", "enable_telemetry", "ca_bundle_path", "debug", "log", "aiosession"]:
+            apiview.add_keyword("global", False, True)
+            apiview.add_line_marker(self.namespace_id)
+            apiview.add_text(f"openai.{self.name}")
+            apiview.add_punctuation("=", True, True)
+            if isinstance(self.value, bool) or self.value is None:
+                apiview.add_text(str(self.value))
+            else:
+                apiview.add_stringliteral(str(self.value))
+            return
+
         apiview.add_keyword("ivar" if self.is_ivar else "cvar", False, True)
         apiview.add_line_marker(self.namespace_id)
         apiview.add_text(self.name)

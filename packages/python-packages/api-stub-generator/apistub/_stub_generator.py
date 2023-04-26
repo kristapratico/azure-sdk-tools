@@ -130,13 +130,16 @@ class StubGenerator:
         else:
             # package root is passed as arg to parse
             pkg_root_path = self.pkg_path
-            pkg_name, version, namespace = parse_setup_py(pkg_root_path)
+            # pkg_name, version, namespace = parse_setup_py(pkg_root_path)
+            pkg_name = "openai"
+            version = "0.27.4"
+            namespace = "openai"
 
-        logging.debug("package name: {0}, version:{1}, namespace:{2}".format(pkg_name, version, namespace))
+        print("package name: {0}, version:{1}, namespace:{2}".format(pkg_name, version, namespace))
 
         # TODO: We should install to a virtualenv
-        logging.debug("Installing package from {}".format(self.pkg_path))
-        self._install_package(pkg_name)
+        # print("Installing package from {}".format(self.pkg_path))
+        # self._install_package(pkg_name)
         
         if self.filter_namespace:
             logging.info("Namespace filter is passed. Filtering modules within namespace :{}".format(self.filter_namespace))
@@ -208,11 +211,22 @@ class StubGenerator:
         modules = self._find_modules(pkg_root_path)
         logging.debug("Modules to generate tokens: {}".format(modules))
 
+        new = []
+        for m in modules:
+            if m.startswith("tests") or m.startswith("datalib"):
+               continue
+            elif m.startswith(".."):
+                new.append(f"openai.{m[2:]}")
+            elif m == ".":
+                new.append(f"openai")
+            else:
+                new.append(f"openai.{m}")
+        modules = new
         # load all modules and parse them recursively
         for m in modules:
-            if not m.startswith(namespace):
-                logging.debug("Skipping module {0}. Module should start with {1}".format(m, namespace))
-                continue
+            # if m.startswith("tests"):
+            #     print("Skipping module {0}. Module should start with {1}".format(m, namespace))
+            #     continue
 
             logging.debug("Importing module {}".format(m))
             module_obj = importlib.import_module(m)

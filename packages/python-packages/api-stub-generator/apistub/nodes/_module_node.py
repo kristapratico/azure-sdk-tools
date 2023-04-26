@@ -6,8 +6,10 @@ from ._base_node import NodeEntityBase
 from ._data_class_node import DataClassNode
 from ._class_node import ClassNode
 from ._function_node import FunctionNode
+from ._variable_node import VariableNode
 from apistub import Navigation, Kind, NavigationTag
 
+filter_globals = lambda x: isinstance(x, VariableNode)
 filter_function = lambda x: isinstance(x, FunctionNode)
 filter_class = lambda x: isinstance(x, ClassNode)
 
@@ -33,6 +35,14 @@ class ModuleNode(NodeEntityBase):
         public_entities = []
         if hasattr(self.obj, "__all__"):
             public_entities = getattr(self.obj, "__all__")
+
+        openai_globals = []
+        if self.obj.__name__ == "openai":
+            openai_globals = ["api_key", "api_key_path", "organization", "api_base", "api_type", "api_version", "verify_ssl_certs", "proxy",
+                            "app_info", "enable_telemetry", "ca_bundle_path", "debug", "log", "aiosession"]
+            for g in openai_globals:
+                if g not in public_entities:
+                    public_entities.append(g)
 
         # find class and function nodes in module
         for name, member_obj in inspect.getmembers(self.obj):
@@ -66,6 +76,12 @@ class ModuleNode(NodeEntityBase):
                 key = "{0}.{1}".format(self.namespace, func_node.name)
                 self.node_index.add(key, func_node)
                 self.child_nodes.append(func_node)
+            elif name in openai_globals:
+                variable_node = VariableNode(namespace=self.namespace, parent_node=self, name=name, type_name=None, value=member_obj, is_ivar=False)
+                print(f"adding variable node: {variable_node}: name: {name} obj={member_obj}")
+                key = "{0}.{1}".format(self.namespace, variable_node.name)
+                self.node_index.add(key, variable_node)
+                self.child_nodes.append(variable_node)
             else:
                 logging.debug("Skipping unknown type member in module: {}".format(name))
 
@@ -93,6 +109,11 @@ class ModuleNode(NodeEntityBase):
         :param ApiView: apiview
         """
         if self.child_nodes:
+            # write globals
+            for g in filter(filter_globals, self.child_nodes):
+                g.generate_tokens(apiview)
+                apiview.set_blank_lines(1)
+
             # Add name space level functions first
             for c in filter(filter_function, self.child_nodes):
                 c.generate_tokens(apiview)
