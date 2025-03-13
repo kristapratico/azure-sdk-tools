@@ -31,13 +31,16 @@
                 ],
                 "line_no": 381,
                 "bad_code": "class azure.ai.vision.imageanalysis.models.aio.PeopleResult(MutableMapping[str, Any]):",
-                "suggestion": "Move PeopleResult into the root models namespace (azure.ai.vision.imageanalysis.models) rather than duplicating it within the aio sub-namespace.",
-                "comment": "Models should not be duplicated between the root and aio namespaces. In this case, PeopleResult is defined in the aio namespace which violates the guideline."
+                "suggestion": "Remove the duplicate PeopleResult model from the aio sub-namespace and ensure that only one PeopleResult exists in the models package.",
+                "comment": "Models should not be duplicated between the root and aio namespaces. The PeopleResult model should only exist once."
             }
         ]
     },
-    "violations_found": 1,
     "total_violations": 2,
+    "violations_found": 1,
+    "true_positives": 1,
+    "false_positives": 0,
+    "false_negatives": 1,
     "percent_coverage": 50,
-    "similarity": 3
+    "similarity": 2
 }

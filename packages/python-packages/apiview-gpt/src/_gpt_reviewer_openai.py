@@ -23,7 +23,6 @@ class GptReviewer:
     def __init__(self, log_prompts: bool = False):
         self.client = openai.AzureOpenAI(
             azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
-            azure_ad_token_provider=get_bearer_token_provider(DefaultAzureCredential(), "https://cognitiveservices.azure.com/.default"),
             api_version="2025-01-01-preview"
         )
         self.output_parser = GuidelinesResult

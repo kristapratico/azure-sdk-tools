@@ -10,10 +10,18 @@ class CustomAPIViewEvaluator:
         expected = json.loads(response)
         actual = json.loads(output)
 
+        expected_violations = {v for violation in expected["violations"] for v in violation["rule_ids"]}
+        actual_violations = {v for violation in actual["violations"] for v in violation["rule_ids"]}
+
+        matching_violations = len(actual_violations.intersection(expected_violations))
+
         review_eval = {
-            "violations_found": len(actual["violations"]),
             "total_violations": len(expected["violations"]),
-            "percent_coverage": len(actual["violations"]) / len(expected["violations"]) * 100,
+            "violations_found": len(actual["violations"]),
+            "true_positives": matching_violations,
+            "false_positives": len(actual["violations"]) - matching_violations,
+            "false_negatives": len(expected["violations"]) - matching_violations,
+            "percent_coverage": matching_violations / len(expected["violations"]) * 100,
         }
         return review_eval
 

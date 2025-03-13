@@ -62,8 +62,11 @@ if __name__ == "__main__":
                 {
                     "expected": json.loads(result["rows"][0]["inputs.response"]),
                     "actual": json.loads(result["rows"][0]["outputs.response"]),
-                    "violations_found": result["rows"][0]["outputs.custom_eval.violations_found"],
                     "total_violations": result["rows"][0]["outputs.custom_eval.total_violations"],
+                    "violations_found": result["rows"][0]["outputs.custom_eval.violations_found"],
+                    "true_positives": result["rows"][0]["outputs.custom_eval.true_positives"],
+                    "false_positives": result["rows"][0]["outputs.custom_eval.false_positives"],
+                    "false_negatives": result["rows"][0]["outputs.custom_eval.false_negatives"],
                     "percent_coverage": result["rows"][0]["outputs.custom_eval.percent_coverage"],
                     "similarity": result["rows"][0]["outputs.similarity.similarity"],
                 },
