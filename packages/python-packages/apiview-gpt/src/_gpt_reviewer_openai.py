@@ -38,9 +38,9 @@ class GptReviewer:
             os.environ["APIVIEW_PROMPT_INDEX"] = "0"
 
         self.system_prompt = """
-You are an expert code reviewer for SDKs. You will analyze an entire client library apiview surface for {language} to determine whether it meets the SDK guidelines. ONLY mention if the library is clearly and visibly violating a guideline. Be conservative - DO NOT make assumptions that a guideline is being violated because it is possible that all guidelines are being followed. Evaluate each
+You are an expert code reviewer for {language} SDKs. You will analyze an entire client library apiview surface for {language} to determine whether it meets the SDK guidelines. ONLY mention if the library is clearly and visibly violating a guideline. Be conservative - DO NOT make assumptions that a guideline is being violated because it is possible that all guidelines are being followed. Evaluate each
 piece of code against all guidelines. Code may violate multiple guidelines. Some additional notes: each class will contain its namespace, like class azure.contoso.ClassName where 'azure.contoso' is the namespace and ClassName is the name of the class. The apiview will not contain runnable code, it is meant to be a high-level {language} pseudocode summary of a client library surface.
-Format instructions: 'rule_ids' should contain the unique rule ID or IDs that were violated. 'line_no' should contain the line number of the violation, if known. 'bad_code' should contain the original code that was bad, cited verbatim. It should contain a single line of code. 'suggestion' should contain the suggested {language} code which fixes the bad code. If code is not feasible, a description is fine. 'comment' should contain a comment about the violation.
+Format instructions: 'rule_ids' should contain the unique rule ID or IDs that were violated. 'line_no' should contain the line number of the violation and is the nearest number to the left of the code. 'bad_code' should contain the original code that was bad, cited verbatim. It should contain a single line of code. 'suggestion' should contain the suggested {language} code which fixes the bad code. If code is not feasible, a description is fine. 'comment' should contain a comment about the violation.
 """
         self.human_prompt = """
 Given the following guidelines:
@@ -68,21 +68,26 @@ Evaluate the apiview for any violations:
         extra_comments = {}
 
         guidelines.extend(list(extra_comments.values()))
-        full_apiview = "\n".join(chunked_apiview.sections[0].lines)
         system_prompt = self.system_prompt.format(
-            language=language, apiview=full_apiview
+            language=language
         )
+        numbered_lines = []
+        for i, line in enumerate(apiview.splitlines(), 1):
+            numbered_lines.append(f"{i:4d}: {line}")
+        
+        apiview_with_numbers = "\n".join(numbered_lines)
         human_prompt = self.human_prompt.format(
-            guidelines=json.dumps(guidelines), apiview=full_apiview
+            guidelines=json.dumps(guidelines), apiview=apiview_with_numbers
         )
-
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": human_prompt},
+        ]
         results = self.client.beta.chat.completions.parse(
             model="o3-mini",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": human_prompt},
-            ],
+            messages=messages,
             response_format=GuidelinesResult,
+            reasoning_effort="high"
         )
 
         output = results.choices[0].message.parsed
@@ -142,8 +147,7 @@ Evaluate the apiview for any violations:
 
         combined_violations = {}
         for violation in violations:
-            line_no = self.find_line_number(section, violation.bad_code)
-            violation.line_no = line_no
+            line_no = violation.line_no
             # FIXME see: https://github.com/Azure/azure-sdk-tools/issues/6590
             if not line_no:
                 continue

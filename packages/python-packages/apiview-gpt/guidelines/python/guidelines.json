@@ -32,7 +32,7 @@
     {
       "id": "python_design.html#python-client-constructor-api-version-argument-1",
       "category": "Specifying the Service Version",
-      "text": "DO accept an optional api_version keyword-only argument of type string. If specified, the provided api version MUST be used when interacting with the service."
+      "text": "DO accept an optional api_version keyword-only argument of type string on the Client. If specified, the provided api version MUST be used when interacting with the service."
     },
     {
       "id": "python_design.html#python-client-service-verbs",
@@ -303,66 +303,6 @@
         "id": "python_implementation.html#python-codestyle-structural-subtyping",
         "category": "Types (or not)",
         "text": "DO prefer structural subtyping and protocols over explicit type checks."
-    },
-    {
-        "id": "python_implementation.html#python-codestyle-abstract-collections",
-        "category": "Types (or not)",
-        "text": "DO derive from the abstract collections base classes collections.abc (or collections for Python 2.7) to provide custom mapping types."
-    },
-    {
-        "id": "python_implementation.html#python-codestyle-pep484",
-        "category": "Types (or not)",
-        "text": "DO provide type hints PEP484 (https://www.python.org/dev/peps/pep-0484/) for publicly documented classes and functions"
-    },
-    {
-        "id": "python_implementation.html#python-codestyle-vars-naming",
-        "category": "Naming conventions",
-        "text": "DO use snake_case for variable, function, and method names:\n\n```python\n# Yes:\nservice_client = ServiceClient()\n\nservice_client.list_things()\n\ndef do_something():\n    ...\n\n# No:\nserviceClient = ServiceClient()\n\nservice_client.listThings()\n\ndef DoSomething():\n    ...\n\n```"
-    },
-    {
-        "id": "python_implementation.html#python-codestyle-type-naming",
-        "category": "Naming conventions",
-        "text": "DO use Pascal case for types:\n\n```python\n# Yes:\nclass ThisIsCorrect(object):\n    pass\n\n# No:\nclass this_is_not_correct(object):\n    pass\n\n# No:\nclass camelCasedTypeName(object):\n    pass\n\n```"
-    },
-    {
-        "id": "python_implementation.html#python-codestyle-const-naming",
-        "category": "Naming conventions",
-        "text": "DO use ALL CAPS for constants:\n\n```python\n# Yes:\nMAX_SIZE = 4711\n\n# No:\nmax_size = 4711\n\n# No:\nMaxSize = 4711\n\n```"
-    },
-    {
-        "id": "python_implementation.html#python-codestyle-module-naming",
-        "category": "Naming conventions",
-        "text": "DO use snake_case for module names."
-    },
-    {
-        "id": "python_implementation.html#python-codestyle-static-methods",
-        "category": "Method signatures",
-        "text": "DO NOT use static methods (staticmethod (https://docs.python.org/3/library/functions.html#staticmethod) . Prefer module level functions instead.\n\nStatic methods are rare and usually forced by other libraries."
-    },
-    {
-        "id": "python_implementation.html#python-codestyle-properties",
-        "category": "Method signatures",
-        "text": "DO NOT use simple getter and setter functions. Use properties instead.\n\n```python\n# Yes\nclass GoodThing(object):\n\n    @property\n    def something(self):\n        \"\"\" Example of a good read-only property.\"\"\"\n        return self._something\n\n# No\nclass BadThing(object):\n\n    def get_something(self):\n        \"\"\" Example of a bad 'getter' style method.\"\"\"\n        return self._something\n\n```"
-    },
-    {
-        "id": "python_implementation.html#python-codestyle-long-args",
-        "category": "Method signatures",
-        "text": "YOU SHOULD NOT have methods that require more than five positional parameters. Optional/flag parameters can be accepted using keyword-only arguments, or **kwargs.\n\nSee TODO: insert link for general guidance on positional vs. optional parameters here."
-    },
-    {
-        "id": "python_implementation.html#python-codestyle-optional-args",
-        "category": "Method signatures",
-        "text": "DO use keyword-only arguments for optional or less-often-used arguments for modules that only need to support Python 3.\n\n```python\n# Yes\ndef foo(a, b, *, c, d=None):\n    # Note that I can even have required keyword-only arguments...\n    ...\n\n```"
-    },
-    {
-        "id": "python_implementation.html#python-codestyle-kwargs",
-        "category": "Method signatures",
-        "text": "DO use keyword-only arguments for arguments that have no obvious ordering.\n\n```python\n# Yes - `source` and `dest` have logical order, `recurse` and `overwrite` do not.\ndef copy(source, dest, *, recurse=False, overwrite=False) ...\n\n\n# No\ndef copy(source, dest, recurse=False, overwrite=False) ...\n\n```"
-    },
-    {
-        "id": "python_implementation.html#python-codestyle-double-underscore",
-        "category": "Public vs \"private\"",
-        "text": "DO NOT use leading double underscore prefixed method names unless name clashes in the inheritance hierarchy are likely.  Name clashes are rare."
     },
     {
         "id": "python_implementation.html#python-codestyle-abstract-collections",

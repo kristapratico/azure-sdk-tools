@@ -1,0 +1,410 @@
+[
+    {
+        "expected": {
+            "status": "Error",
+            "violations": [
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-connection-string"
+                    ],
+                    "line_no": 10,
+                    "bad_code": "connection_string: Optional[str] = None,",
+                    "suggestion": "Remove the connection_string parameter from the __init__ constructor and instead provide a separate factory classmethod (e.g. from_connection_string) that creates an instance from a connection string.",
+                    "comment": "The constructor of ImageAnalysisClient in the sync namespace accepts a connection_string argument, which violates the guideline that the __init__ method must not take a connection string."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-models-async"
+                    ],
+                    "line_no": 382,
+                    "bad_code": "class azure.ai.vision.imageanalysis.models.aio.PeopleResult(MutableMapping[str, Any]):",
+                    "suggestion": "Remove duplicate model definitions in the aio sub-namespace. The PeopleResult model should be defined only once (in the root models namespace) and reused in both sync and async clients.",
+                    "comment": "Defining PeopleResult in the azure.ai.vision.imageanalysis.models.aio namespace duplicates models between sync and async packages, which violates the guideline against duplicating models between the root and aio namespaces."
+                }
+            ]
+        },
+        "actual": {
+            "status": "Error",
+            "violations": [
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-connection-string"
+                    ],
+                    "line_no": 10,
+                    "bad_code": "connection_string: Optional[str] = None,",
+                    "suggestion": "Remove the connection_string parameter from the __init__ signature and instead provide a separate factory classmethod named from_connection_string that accepts a connection string along with the other required parameters.",
+                    "comment": "The client constructor must not take a connection string. According to the guidelines, constructing the client using a connection string should be done via a dedicated factory method."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-async-keywords"
+                    ],
+                    "line_no": 92,
+                    "bad_code": "def send_request(",
+                    "suggestion": "Change the async client method definition to use async/await; for example, use 'async def send_request(...' so that the method properly uses asynchronous syntax.",
+                    "comment": "Async client methods must be defined with the async keyword. Defining send_request without async violates the guidelines for asynchronous operations."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-models-async"
+                    ],
+                    "line_no": 382,
+                    "bad_code": "class azure.ai.vision.imageanalysis.models.aio.PeopleResult(MutableMapping[str, Any]):",
+                    "suggestion": "Move PeopleResult into the common models namespace (azure.ai.vision.imageanalysis.models) so that it isn\u2019t duplicated in the aio subpackage.",
+                    "comment": "Models used by both sync and async clients should be defined once in a shared namespace rather than duplicating them in the aio namespace."
+                }
+            ]
+        },
+        "total_violations": 2,
+        "violations_found": 3,
+        "exact_matches": 2,
+        "true_positives": 2,
+        "false_positives": 1,
+        "false_negatives": 0,
+        "percent_coverage": 100,
+        "rule_matches_wrong_line": 0,
+        "wrong_rule_details": [],
+        "line_matches_wrong_rule": 0,
+        "wrong_line_details": [],
+        "similarity": 3,
+        "groundedness": 3,
+        "groundedness_reason": "The RESPONSE accurately reflects the issues mentioned in the CONTEXT but includes an unsupported addition regarding async client methods, which is not present in the CONTEXT.",
+        "overall_score": 83.33333333333334
+    },
+    {
+        "expected": {
+            "status": "Error",
+            "violations": [
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-connection-string"
+                    ],
+                    "line_no": 10,
+                    "bad_code": "connection_string: Optional[str] = None,",
+                    "suggestion": "Remove the connection_string parameter from the constructor and implement a separate factory method (e.g. from_connection_string) to create the client using a connection string.",
+                    "comment": "The constructor must not accept a connection string; using a factory method for connection string support is required by the guidelines."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-same-name-sync-async"
+                    ],
+                    "line_no": 53,
+                    "bad_code": "class azure.ai.vision.imageanalysis.aio.AsyncImageAnalysisClient(ImageAnalysisClient): implements AsyncContextManager",
+                    "suggestion": "Rename the async client to ImageAnalysisClient (i.e. without the 'Async' prefix) and keep it under the 'azure.ai.vision.imageanalysis.aio' namespace so that both sync and async clients share the same client name.",
+                    "comment": "Async and sync clients must share the same client name; adding an 'Async' prefix violates this guideline."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-models-async"
+                    ],
+                    "line_no": 432,
+                    "bad_code": "class azure.ai.vision.imageanalysis.models.aio.PeopleResult(MutableMapping[str, Any]):",
+                    "suggestion": "Move PeopleResult to the common models namespace (azure.ai.vision.imageanalysis.models) instead of duplicating it in the aio sub-namespace.",
+                    "comment": "Models should not be duplicated between the root and aio namespaces."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-models-enum-name-uppercase"
+                    ],
+                    "line_no": 517,
+                    "bad_code": "tags = \"tags\"",
+                    "suggestion": "Rename the enum member to use UPPERCASE (e.g., TAGS = \"tags\") in accordance with the guidelines.",
+                    "comment": "Enum member names must be in UPPERCASE to comply with naming conventions."
+                },
+                {
+                    "rule_ids": [
+                        "python_implementation.html#python-codestyle-properties"
+                    ],
+                    "line_no": 411,
+                    "bad_code": "def get_result(self) -> ObjectsResult",
+                    "suggestion": "Replace the get_result/set_result methods with a property (with a getter and setter) to expose the result, for example, using @property and @result.setter.",
+                    "comment": "Simple getter and setter functions are discouraged; properties should be used instead."
+                },
+                {
+                    "rule_ids": [
+                        "python_implementation.html#python-codestyle-properties"
+                    ],
+                    "line_no": 413,
+                    "bad_code": "def set_result(self, obj) -> None",
+                    "suggestion": "Replace the set_result method with a property setter (e.g., @result.setter def result(self, value): ...).",
+                    "comment": "Simple setter methods should be implemented as property setters."
+                },
+                {
+                    "rule_ids": [
+                        "python_implementation.html#python-codestyle-type-naming"
+                    ],
+                    "line_no": 209,
+                    "bad_code": "class azure.ai.vision.imageanalysis.models.detectedPerson(MutableMapping[str, Any]):",
+                    "suggestion": "Rename the class to DetectedPerson (using PascalCase) to adhere to type naming conventions.",
+                    "comment": "Type names should be in PascalCase; 'detectedPerson' violates this guideline."
+                },
+                {
+                    "rule_ids": [
+                        "python_implementation.html#python-codestyle-static-methods"
+                    ],
+                    "line_no": 88,
+                    "bad_code": "@staticmethod",
+                    "suggestion": "Remove the staticmethod decorator and refactor send_request as an instance method or a module-level function.",
+                    "comment": "Static methods are discouraged; module-level functions or instance methods should be used instead."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-optional-arguments-keyword-only"
+                    ],
+                    "line_no": 30,
+                    "bad_code": "def analyze_from_url(",
+                    "suggestion": "Insert a '*' after the required positional parameters so that all optional parameters are keyword-only. For example:\n\n  def analyze_from_url(self, image_url: str, visual_features: List[VisualFeatures], *, gender_neutral_caption: Optional[bool] = ..., language: Optional[str] = ..., model_version: Optional[str] = ..., smart_crops_aspect_ratios: Optional[List[float]] = ..., **kwargs: Any) -> ImageAnalysisResult",
+                    "comment": "Optional operation\u2010specific parameters must be keyword-only."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-constructor-api-version-argument-1"
+                    ],
+                    "line_no": 54,
+                    "bad_code": "def __init__(\n        self, \n        endpoint: str, \n        credential: Union[AzureKeyCredential, AsyncTokenCredential], \n    ) -> None",
+                    "suggestion": "Add an optional keyword-only api_version parameter to the async client __init__ signature, for example: \n    def __init__(self, endpoint: str, credential: Union[AzureKeyCredential, AsyncTokenCredential], *, api_version: str = ..., **kwargs: Any) -> None",
+                    "comment": "The async client constructor is missing the optional api_version parameter required by the guidelines."
+                }
+            ]
+        },
+        "actual": {
+            "status": "Error",
+            "violations": [
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-connection-string"
+                    ],
+                    "line_no": 10,
+                    "bad_code": "connection_string: Optional[str] = None,",
+                    "suggestion": "Remove the 'connection_string' parameter from the constructor and implement a separate factory classmethod (e.g. from_connection_string) to create the client.",
+                    "comment": "The constructor must not accept a connection string."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-optional-arguments-keyword-only"
+                    ],
+                    "line_no": 30,
+                    "bad_code": "def analyze_from_url(self, image_url: str, visual_features: List[VisualFeatures], gender_neutral_caption: Optional[bool] = ..., language: Optional[str] = ..., model_version: Optional[str] = ..., smart_crops_aspect_ratios: Optional[List[float]] = ..., **kwargs: Any) -> ImageAnalysisResult",
+                    "suggestion": "Insert a '*, ' after the required parameters so that 'gender_neutral_caption', 'language', 'model_version', and 'smart_crops_aspect_ratios' become keyword-only arguments.",
+                    "comment": "Optional operation-specific arguments should be provided as keyword-only to prevent accidental positional use."
+                },
+                {
+                    "rule_ids": [
+                        "python_implementation.html#python-codestyle-static-methods"
+                    ],
+                    "line_no": 88,
+                    "bad_code": "@staticmethod",
+                    "suggestion": "Remove the @staticmethod decorator and define 'send_request' as an instance method (or as a module-level function if appropriate).",
+                    "comment": "Static methods are discouraged; use instance methods or module-level functions instead."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-same-name-sync-async"
+                    ],
+                    "line_no": 53,
+                    "bad_code": "class azure.ai.vision.imageanalysis.aio.AsyncImageAnalysisClient(ImageAnalysisClient): implements AsyncContextManager",
+                    "suggestion": "Rename the asynchronous client class to 'ImageAnalysisClient' so that it matches the synchronous client name in its respective .aio namespace.",
+                    "comment": "The async and sync clients must have the same name (differentiated only by the namespace)."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-models-enum-name-uppercase"
+                    ],
+                    "line_no": 517,
+                    "bad_code": "tags = 'tags'",
+                    "suggestion": "Rename the enum member to 'TAGS = 'tags'' to follow UPPERCASE naming conventions.",
+                    "comment": "Enum member names should be in UPPERCASE."
+                },
+                {
+                    "rule_ids": [
+                        "python_implementation.html#python-codestyle-type-naming"
+                    ],
+                    "line_no": 209,
+                    "bad_code": "class azure.ai.vision.imageanalysis.models.detectedPerson(MutableMapping[str, Any]):",
+                    "suggestion": "Rename the class to 'DetectedPerson' (PascalCase) to adhere to naming conventions.",
+                    "comment": "Type names should use PascalCase."
+                },
+                {
+                    "rule_ids": [
+                        "python_implementation.html#python-codestyle-properties"
+                    ],
+                    "line_no": 411,
+                    "bad_code": "def get_result(self) -> ObjectsResult",
+                    "suggestion": "Replace the 'get_result' method with a property (e.g. '@property def result(self): ...').",
+                    "comment": "Simple getter functions should be replaced with properties."
+                },
+                {
+                    "rule_ids": [
+                        "python_implementation.html#python-codestyle-properties"
+                    ],
+                    "line_no": 413,
+                    "bad_code": "def set_result(self, obj) -> None",
+                    "suggestion": "Replace the 'set_result' method with a property setter (e.g. '@result.setter def result(self, value): ...').",
+                    "comment": "Simple setter functions should be replaced with properties."
+                }
+            ]
+        },
+        "total_violations": 10,
+        "violations_found": 8,
+        "exact_matches": 8,
+        "true_positives": 8,
+        "false_positives": 0,
+        "false_negatives": 2,
+        "percent_coverage": 80,
+        "rule_matches_wrong_line": 0,
+        "wrong_rule_details": [],
+        "line_matches_wrong_rule": 0,
+        "wrong_line_details": [],
+        "similarity": 4,
+        "groundedness": 5,
+        "groundedness_reason": "The RESPONSE accurately reflects all the information provided in the CONTEXT without introducing unsupported details or omitting any critical points.",
+        "overall_score": 60.74999999999999
+    },
+    {
+        "expected": {
+            "status": "Success",
+            "violations": []
+        },
+        "actual": {
+            "status": "Error",
+            "violations": [
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-async-keywords"
+                    ],
+                    "line_no": 91,
+                    "bad_code": "def send_request(",
+                    "suggestion": "async def send_request(",
+                    "comment": "In the async client (namespace azure.ai.vision.imageanalysis.aio), all public methods must be defined using async/await syntax. The send_request method is not marked as async, which violates the async client guidelines."
+                }
+            ]
+        },
+        "total_violations": 0,
+        "violations_found": 1,
+        "exact_matches": 0,
+        "true_positives": 0,
+        "false_positives": 1,
+        "false_negatives": 0,
+        "percent_coverage": 0,
+        "rule_matches_wrong_line": 0,
+        "wrong_rule_details": [],
+        "line_matches_wrong_rule": 0,
+        "wrong_line_details": [],
+        "similarity": 1,
+        "groundedness": 2,
+        "groundedness_reason": "The RESPONSE contradicts the CONTEXT by indicating an error and a violation, whereas the CONTEXT states success with no violations. This fits the definition of a contradictory response.",
+        "overall_score": 0
+    },
+    {
+        "expected": {
+            "status": "Error",
+            "violations": [
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-optional-arguments-keyword-only"
+                    ],
+                    "line_no": 16,
+                    "bad_code": "def analyze(self, image_data: bytes, visual_features: List[VisualFeatures], gender_neutral_caption: Optional[bool] = ..., language: Optional[str] = ..., model_version: Optional[str] = ..., smart_crops_aspect_ratios: Optional[List[float]] = ..., **kwargs: Any) -> ImageAnalysisResult",
+                    "suggestion": "def analyze(self, image_data: bytes, visual_features: List[VisualFeatures], *, gender_neutral_caption: Optional[bool] = ..., language: Optional[str] = ..., model_version: Optional[str] = ..., smart_crops_aspect_ratios: Optional[List[float]] = ..., **kwargs: Any) -> ImageAnalysisResult",
+                    "comment": "Optional operation-specific parameters should be provided as keyword-only arguments. Inserting the '*' after the required parameters forces callers to use parameter names."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-optional-arguments-keyword-only"
+                    ],
+                    "line_no": 28,
+                    "bad_code": "def analyze_from_url(self, image_url: str, visual_features: List[VisualFeatures], gender_neutral_caption: Optional[bool] = ..., language: Optional[str] = ..., model_version: Optional[str] = ..., smart_crops_aspect_ratios: Optional[List[float]] = ..., **kwargs: Any) -> ImageAnalysisResult",
+                    "suggestion": "def analyze_from_url(self, image_url: str, visual_features: List[VisualFeatures], *, gender_neutral_caption: Optional[bool] = ..., language: Optional[str] = ..., model_version: Optional[str] = ..., smart_crops_aspect_ratios: Optional[List[float]] = ..., **kwargs: Any) -> ImageAnalysisResult",
+                    "comment": "Optional parameters should be keyword-only; add '*' after required parameters in the method signature."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-optional-arguments-keyword-only"
+                    ],
+                    "line_no": 62,
+                    "bad_code": "async def analyze(self, image_data: bytes, visual_features: List[VisualFeatures], gender_neutral_caption: Optional[bool] = ..., language: Optional[str] = ..., model_version: Optional[str] = ..., smart_crops_aspect_ratios: Optional[List[float]] = ..., **kwargs: Any) -> ImageAnalysisResult",
+                    "suggestion": "async def analyze(self, image_data: bytes, visual_features: List[VisualFeatures], *, gender_neutral_caption: Optional[bool] = ..., language: Optional[str] = ..., model_version: Optional[str] = ..., smart_crops_aspect_ratios: Optional[List[float]] = ..., **kwargs: Any) -> ImageAnalysisResult",
+                    "comment": "For async methods, optional parameters must also be keyword-only. Insert '*' to force keyword-only usage."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-optional-arguments-keyword-only"
+                    ],
+                    "line_no": 74,
+                    "bad_code": "async def analyze_from_url(self, image_url: str, visual_features: List[VisualFeatures], gender_neutral_caption: Optional[bool] = ..., language: Optional[str] = ..., model_version: Optional[str] = ..., smart_crops_aspect_ratios: Optional[List[float]] = ..., **kwargs: Any) -> ImageAnalysisResult",
+                    "suggestion": "async def analyze_from_url(self, image_url: str, visual_features: List[VisualFeatures], *, gender_neutral_caption: Optional[bool] = ..., language: Optional[str] = ..., model_version: Optional[str] = ..., smart_crops_aspect_ratios: Optional[List[float]] = ..., **kwargs: Any) -> ImageAnalysisResult",
+                    "comment": "Optional parameters should be made keyword-only by inserting '*' after the required parameters."
+                }
+            ]
+        },
+        "actual": {
+            "status": "Error",
+            "violations": [
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-optional-arguments-keyword-only"
+                    ],
+                    "line_no": 16,
+                    "bad_code": "def analyze(",
+                    "suggestion": "Insert a '*' after the required parameters so that the optional parameters become keyword-only. For example:\n\n  def analyze(self, image_data: bytes, visual_features: List[VisualFeatures], *, gender_neutral_caption: Optional[bool] = ..., language: Optional[str] = ..., model_version: Optional[str] = ..., smart_crops_aspect_ratios: Optional[List[float]] = ..., **kwargs: Any) -> ImageAnalysisResult",
+                    "comment": "Optional parameters for the 'analyze' method should be keyword-only per guidelines."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-optional-arguments-keyword-only"
+                    ],
+                    "line_no": 28,
+                    "bad_code": "def analyze_from_url(",
+                    "suggestion": "Add a '*' to enforce keyword-only for optional arguments. For example:\n\n  def analyze_from_url(self, image_url: str, visual_features: List[VisualFeatures], *, gender_neutral_caption: Optional[bool] = ..., language: Optional[str] = ..., model_version: Optional[str] = ..., smart_crops_aspect_ratios: Optional[List[float]] = ..., **kwargs: Any) -> ImageAnalysisResult",
+                    "comment": "The 'analyze_from_url' method exposes optional parameters in a positional manner; they should be keyword-only."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-optional-arguments-keyword-only"
+                    ],
+                    "line_no": 62,
+                    "bad_code": "async def analyze(",
+                    "suggestion": "Modify the method signature to force keyword-only for optional parameters by inserting '*' after the required arguments. For example:\n\n  async def analyze(self, image_data: bytes, visual_features: List[VisualFeatures], *, gender_neutral_caption: Optional[bool] = ..., language: Optional[str] = ..., model_version: Optional[str] = ..., smart_crops_aspect_ratios: Optional[List[float]] = ..., **kwargs: Any) -> ImageAnalysisResult",
+                    "comment": "Even in the async client, optional operation-specific parameters must be keyword-only."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-optional-arguments-keyword-only"
+                    ],
+                    "line_no": 74,
+                    "bad_code": "async def analyze_from_url(",
+                    "suggestion": "Enforce keyword-only optional parameters by adding '*' after the required parameters. For example:\n\n  async def analyze_from_url(self, image_url: str, visual_features: List[VisualFeatures], *, gender_neutral_caption: Optional[bool] = ..., language: Optional[str] = ..., model_version: Optional[str] = ..., smart_crops_aspect_ratios: Optional[List[float]] = ..., **kwargs: Any) -> ImageAnalysisResult",
+                    "comment": "The method 'analyze_from_url' should require that its optional parameters are passed by keyword."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-async-keywords"
+                    ],
+                    "line_no": 87,
+                    "bad_code": "def send_request(",
+                    "suggestion": "Declare the method as asynchronous using 'async def'. For example:\n\n  async def send_request(self, request: HttpRequest, *, stream: bool = False, **kwargs: Any) -> AsyncHttpResponse",
+                    "comment": "Methods in the async client should be defined with 'async def' to properly use async/await patterns."
+                }
+            ]
+        },
+        "total_violations": 4,
+        "violations_found": 5,
+        "exact_matches": 4,
+        "true_positives": 4,
+        "false_positives": 1,
+        "false_negatives": 0,
+        "percent_coverage": 100,
+        "rule_matches_wrong_line": 0,
+        "wrong_rule_details": [],
+        "line_matches_wrong_rule": 0,
+        "wrong_line_details": [],
+        "similarity": 5,
+        "groundedness": 5,
+        "groundedness_reason": "The RESPONSE accurately reflects the information provided in the CONTEXT without adding unsupported details or omitting critical points, making it fully grounded and complete.",
+        "overall_score": 96.00000000000001
+    },
+    {
+        "average_score": 60.02083333333334,
+        "total_evals": 4
+    }
+]
