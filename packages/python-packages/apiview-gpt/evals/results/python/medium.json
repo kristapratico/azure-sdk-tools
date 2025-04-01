@@ -1,0 +1,279 @@
+[
+    {
+        "testcase": "few_violations",
+        "expected": {
+            "status": "Error",
+            "violations": [
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-same-name-sync-async",
+                        "python_design.html#python-namespaces-async"
+                    ],
+                    "line_no": 78,
+                    "bad_code": "class azure.healthinsights.clinicalmatching.ClinicalMatchingAsyncClient(ClinicalMatchingClientOperationsMixin): implements AsyncContextManager",
+                    "suggestion": "Move the async client into an '.aio' sub-namespace (e.g. azure.healthinsights.clinicalmatching.aio) and rename the class to 'ClinicalMatchingClient' so that both sync and async clients share the same client name.",
+                    "comment": "Async clients should use the same client name as the synchronous version and reside in an '.aio' namespace. Using 'ClinicalMatchingAsyncClient' in the same namespace violates the naming and namespace guidelines."
+                },
+                {
+                    "rule_ids": [
+                        "python_implementation.html#python-codestyle-pep484"
+                    ],
+                    "line_no": 91,
+                    "bad_code": "async def begin_match_trials(",
+                    "suggestion": "Add full PEP484 type annotations to all parameters and the return type, for example: \n\n@overload\nasync def begin_match_trials(self, body: Union[TrialMatcherData, JSON, IO], *, content_type: str = \"application/json\", repeatability_first_sent: Optional[datetime] = None, repeatability_request_id: Optional[str] = None, **kwargs: Any) -> LROPoller[TrialMatcherResult]:\n    ...",
+                    "comment": "Public async methods must include proper type hints. The async overloads for begin_match_trials are missing type annotations, which violates PEP484 guidelines."
+                }
+            ]
+        },
+        "actual": {
+            "status": "Error",
+            "violations": [
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-same-name-sync-async"
+                    ],
+                    "line_no": 78,
+                    "bad_code": "class azure.healthinsights.clinicalmatching.ClinicalMatchingAsyncClient(ClinicalMatchingClientOperationsMixin): implements AsyncContextManager",
+                    "suggestion": "Rename the asynchronous client to 'ClinicalMatchingClient' and move it to the async package namespace (e.g. azure.healthinsights.clinicalmatching.aio).",
+                    "comment": "According to the SDK guidelines, the sync and async clients should share the same client name; the async version should be located in an '.aio' namespace rather than using an 'Async' suffix in the class name."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-namespaces-async"
+                    ],
+                    "line_no": 76,
+                    "bad_code": "namespace azure.healthinsights.clinicalmatching",
+                    "suggestion": "Use a namespace with an .aio suffix for asynchronous clients, for example, 'namespace azure.healthinsights.clinicalmatching.aio'.",
+                    "comment": "SDK guidelines require that asynchronous clients reside in an '.aio' namespace. The async client defined here is incorrectly placed in the same namespace as the sync client."
+                },
+                {
+                    "rule_ids": [
+                        "python_implementation.html#python-codestyle-pep484"
+                    ],
+                    "line_no": 90,
+                    "bad_code": "async def begin_match_trials( self, body, *, content_type, repeatability_first_sent, repeatability_request_id, **kwargs )",
+                    "suggestion": "Provide full type annotations for all parameters and the return type (e.g. matching the synchronous version's signature with parameters typed as Union[TrialMatcherData, JSON, IO], content_type: str, etc., and a return type of Awaitable[LROPoller[TrialMatcherResult]]).",
+                    "comment": "Public async API methods must include complete PEP484 type hints. The overloads for the async 'begin_match_trials' method lack type annotations."
+                }
+            ]
+        },
+        "total_violations": 2,
+        "violations_found": 3,
+        "true_positives": 1,
+        "false_positives": 1,
+        "false_negatives": 0,
+        "percent_coverage": 50.0,
+        "rule_matches_wrong_line": 1,
+        "wrong_rule_details": [],
+        "line_matches_wrong_rule": 0,
+        "wrong_line_details": [
+            [
+                [
+                    "python_implementation.html#python-codestyle-pep484"
+                ],
+                91,
+                90
+            ]
+        ],
+        "similarity": 4,
+        "groundedness": 5,
+        "groundedness_reason": "The RESPONSE is fully grounded in the CONTEXT, accurately identifying and addressing the violations of the guidelines provided. It does not introduce any unsupported information or omit any critical details from the CONTEXT.",
+        "overall_score": 59
+    },
+    {
+        "testcase": "many_violations",
+        "expected": {
+            "status": "Error",
+            "violations": [
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-naming",
+                        "python_design.html#python-client-same-name-sync-async"
+                    ],
+                    "line_no": 6,
+                    "bad_code": "class azure.healthinsights.clinicalmatching.ClinicalMatching(ClinicalMatchingClientOperationsMixin): implements ContextManager",
+                    "suggestion": "class azure.healthinsights.clinicalmatching.ClinicalMatchingClient(ClinicalMatchingClientOperationsMixin): implements ContextManager",
+                    "comment": "Service client types must have a 'Client' suffix and the sync and async client classes should share the same name."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-auth-credential-azure-core"
+                    ],
+                    "line_no": 11,
+                    "bad_code": "api_key: str",
+                    "suggestion": "Use a credential object from azure.core.credentials (e.g., AzureKeyCredential) instead of a raw string for the api key.",
+                    "comment": "Authentication parameters should leverage azure-core credential classes rather than using a simple string."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-lro-poller-begin-naming"
+                    ],
+                    "line_no": 66,
+                    "bad_code": "def create_trials(",
+                    "suggestion": "def begin_create_trials(",
+                    "comment": "Long running operations should use a 'begin_' prefix. Rename 'create_trials' to 'begin_create_trials'."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-options-naming"
+                    ],
+                    "line_no": 70,
+                    "bad_code": "options: Optional[CreateTrialsOptions] = None,",
+                    "suggestion": "Remove the 'options' bag parameter and instead expose each optional parameter directly as keyword-only arguments.",
+                    "comment": "The use of an 'options bag' (CreateTrialsOptions) is disallowed. Optional parameters should be provided as individual keyword-only arguments."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-lro-poller-begin-naming"
+                    ],
+                    "line_no": 181,
+                    "bad_code": "async def create_trials(",
+                    "suggestion": "async def begin_create_trials(",
+                    "comment": "Long running operations should use a 'begin_' prefix. Rename the async 'create_trials' method to 'begin_create_trials'."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-paged-prefix"
+                    ],
+                    "line_no": 102,
+                    "bad_code": "def trials(",
+                    "suggestion": "def list_trials(",
+                    "comment": "Methods that enumerate resources should be prefixed with 'list_'. Consider renaming 'trials' to 'list_trials' and returning an ItemPaged type."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-paged-prefix"
+                    ],
+                    "line_no": 217,
+                    "bad_code": "def trials(",
+                    "suggestion": "def list_trials(",
+                    "comment": "Methods that enumerate resources should be prefixed with 'list_'. Consider renaming 'trials' to 'list_trials' and returning an ItemPaged type."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-service-verbs"
+                    ],
+                    "line_no": 108,
+                    "bad_code": "def erase_trials(",
+                    "suggestion": "def delete_trials(",
+                    "comment": "Deletion operations should use a preferred verb like 'delete_' instead of 'erase_'."
+                },
+                {
+                    "rule_ids": [
+                        "python_implementation.html#python-codestyle-vars-naming"
+                    ],
+                    "line_no": 998,
+                    "bad_code": "ivar eligibilityCriteriaEvidence: Optional[str]",
+                    "suggestion": "ivar eligibility_criteria_evidence: Optional[str]",
+                    "comment": "Variable names should use snake_case instead of camelCase."
+                },
+                {
+                    "rule_ids": [
+                        "python_implementation.html#python-codestyle-vars-naming"
+                    ],
+                    "line_no": 1000,
+                    "bad_code": "ivar patientDataEvidence: Optional[ClinicalNoteEvidence]",
+                    "suggestion": "ivar patient_data_evidence: Optional[ClinicalNoteEvidence]",
+                    "comment": "Variable names should use snake_case instead of camelCase."
+                },
+                {
+                    "rule_ids": [
+                        "python_implementation.html#python-codestyle-vars-naming"
+                    ],
+                    "line_no": 1001,
+                    "bad_code": "ivar patientInfoEvidence: Optional[ClinicalCodedElement]",
+                    "suggestion": "ivar patient_info_evidence: Optional[ClinicalCodedElement]",
+                    "comment": "Variable names should use snake_case instead of camelCase."
+                }
+            ]
+        },
+        "actual": {
+            "status": "Error",
+            "violations": [
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-naming",
+                        "python_design.html#python-client-same-name-sync-async"
+                    ],
+                    "line_no": 6,
+                    "bad_code": "class azure.healthinsights.clinicalmatching.ClinicalMatching(ClinicalMatchingClientOperationsMixin): implements ContextManager",
+                    "suggestion": "Rename the sync client to 'ClinicalMatchingClient' so that it matches the async client's name.",
+                    "comment": "Service client types should have a 'Client' suffix. Sync and async clients must share the same name."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-options-naming"
+                    ],
+                    "line_no": 70,
+                    "bad_code": "options: Optional[CreateTrialsOptions] = None,",
+                    "suggestion": "Replace the 'options' bag parameter with explicit keyword-only arguments for each optional setting.",
+                    "comment": "Do not group optional parameters in an options bag object."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-paged-prefix",
+                        "python_design.html#python-response-paged-protocol"
+                    ],
+                    "line_no": 102,
+                    "bad_code": "def trials(self, **kwargs: Any) -> List[TrialMatcherResult]",
+                    "suggestion": "Return a type implementing the ItemPaged protocol rather than a plain list (e.g. ItemPaged[TrialMatcherResult]).",
+                    "comment": "List operations must be prefixed with 'list_' as per guidelines. Operations returning collections should return an ItemPaged object to support paging."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-service-verbs"
+                    ],
+                    "line_no": 108,
+                    "bad_code": "def erase_trials(self, \n                 trial: str,\n     **kwargs: Any) -> None",
+                    "suggestion": "def delete_trials(self, trial: str, **kwargs: Any) -> None",
+                    "comment": "Deletion methods should use the 'delete_' prefix rather than 'erase_'."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-async-keywords"
+                    ],
+                    "line_no": 222,
+                    "bad_code": "def trials(self, **kwargs: Any) -> List[TrialMatcherResult]",
+                    "suggestion": "async def trials(self, **kwargs: Any) -> List[TrialMatcherResult]",
+                    "comment": "Async client methods should be defined with 'async def' rather than plain def."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-client-async-keywords"
+                    ],
+                    "line_no": 237,
+                    "bad_code": "def send_request(self, request: HttpRequest, *, stream: Optional[bool] = ..., **kwargs: Any) -> Awaitable[AsyncHttpResponse]",
+                    "suggestion": "async def send_request(self, request: HttpRequest, *, stream: Optional[bool] = ..., **kwargs: Any) -> AsyncHttpResponse",
+                    "comment": "Async client methods should be declared with 'async def' so that they are awaitable."
+                },
+                {
+                    "rule_ids": [
+                        "python_design.html#python-auth-credential-azure-core"
+                    ],
+                    "line_no": 11,
+                    "bad_code": "api_key: str,",
+                    "suggestion": "api_key: AzureKeyCredential,",
+                    "comment": "Authentication parameters should use credential classes from azure-core rather than a raw string."
+                }
+            ]
+        },
+        "total_violations": 11,
+        "violations_found": 7,
+        "true_positives": 5,
+        "false_positives": 2,
+        "false_negatives": 6,
+        "percent_coverage": 45.4545454545,
+        "rule_matches_wrong_line": 0,
+        "wrong_rule_details": [],
+        "line_matches_wrong_rule": 0,
+        "wrong_line_details": [],
+        "similarity": 4,
+        "groundedness": 5,
+        "groundedness_reason": "The RESPONSE is fully grounded in the CONTEXT, accurately identifying and addressing violations of the guidelines provided. It does not introduce unsupported information or omit any critical details, making it a complete and faithful representation of the CONTEXT.",
+        "overall_score": 37
+    },
+    {
+        "average_score": 48.0,
+        "total_evals": 2
+    }
+]
