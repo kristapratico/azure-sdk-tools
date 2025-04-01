@@ -1,5 +1,6 @@
 import argparse
 import json
+import pathlib
 import os
 
 
@@ -45,8 +46,8 @@ if __name__ == "__main__":
         expected_contents = json.loads(f.read())
 
     # add context to the testcase based on the rule_ids in expected_contents and corresponding text from guidelines.json
-    # TODO hardcoding path
-    with open("/home/krpratic/azure-sdk-tools/packages/python-packages/apiview-gpt/guidelines/python/guidelines.json", "r") as f:
+    guidelines_path = pathlib.Path(__file__).parent.parent / "guidelines" / args.language / "guidelines.json"
+    with open(str(guidelines_path), "r") as f:
         guidelines = json.loads(f.read())
 
     context = ""

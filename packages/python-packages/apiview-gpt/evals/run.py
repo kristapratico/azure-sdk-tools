@@ -1,12 +1,12 @@
 import os
 import json
 import pathlib
-import json
 import argparse
 from typing import Set, Tuple, Any
 import copy
 
 import dotenv
+from tabulate import tabulate
 from azure.ai.evaluation import evaluate, SimilarityEvaluator, GroundednessEvaluator
 
 dotenv.load_dotenv()
@@ -81,20 +81,20 @@ def calculate_overall_score(row: dict[str, Any]) -> float:
     """Calculate weighted score based on various metrics.
     """
     weights = {
-        'exact_match_weight': 0.6,     # Highest weight - perfect matches
-        'rule_match_weight': 0.2,      # Lower weight - right rule, wrong line
+        'exact_match_weight': 0.6,     # Perfect match - right rule, right line
+        'fuzzy_match_weight': 0.2,     # Fuzzy match - right rule, wrong line
         'false_positive_penalty': 0.3, # Penalty for incorrect violations
         'groundedness_weight': 0.15,   # Weight for staying grounded in guidelines
         'similarity_weight': 0.05      # Smaller weight for similarity in expected vs actual responses
     }
 
-    exact_match_score = (row["outputs.custom_eval.true_positives"] / 
-                        row["outputs.custom_eval.total_violations"] 
+    exact_match_score = (row["outputs.custom_eval.true_positives"] /
+                        row["outputs.custom_eval.total_violations"]
                         if row["outputs.custom_eval.total_violations"] > 0 else 0.0)
 
-    # Only consider rule matches if there are remaining unmatched violations
+    # Only consider fuzzy matches if there are remaining unmatched violations
     remaining_violations = row["outputs.custom_eval.total_violations"] - row["outputs.custom_eval.true_positives"]
-    rule_match_score = (row["outputs.custom_eval.rule_matches_wrong_line"] / 
+    rule_match_score = (row["outputs.custom_eval.rule_matches_wrong_line"] /
                        remaining_violations
                        if remaining_violations > 0 else 0.0)
 
@@ -102,7 +102,7 @@ def calculate_overall_score(row: dict[str, Any]) -> float:
     if exact_match_score == 1.0:
         rule_match_score = 1.0
 
-    false_positive_rate = (row["outputs.custom_eval.false_positives"] / 
+    false_positive_rate = (row["outputs.custom_eval.false_positives"] /
                           row["outputs.custom_eval.violations_found"]
                           if row["outputs.custom_eval.violations_found"] > 0 else 0.0)
 
@@ -112,7 +112,7 @@ def calculate_overall_score(row: dict[str, Any]) -> float:
 
     score = (
         weights['exact_match_weight'] * exact_match_score +
-        weights['rule_match_weight'] * rule_match_score -
+        weights['fuzzy_match_weight'] * rule_match_score -
         weights['false_positive_penalty'] * false_positive_rate +
         weights['groundedness_weight'] * groundedness_normalized +
         weights['similarity_weight'] * similarity_normalized
@@ -137,7 +137,6 @@ def format_terminal_diff(new: float, old: float, format_str: str = ".1f", revers
 
 
 def create_table(baseline_results: dict[str, Any], eval_results: list[dict[str, Any]], file_name: str) -> None:
-    from tabulate import tabulate
     headers = ["Test Case", "Score", "Violations found", "Exact matches (TP)", "Fuzzy matches", "False positives (FP)", "Groundedness", "Similarity"]
     terminal_rows = []
 
@@ -339,8 +338,8 @@ if __name__ == "__main__":
     if args.test_file == "all":
         # only update coverage if all tests are run
         output_path = pathlib.Path(__file__).parent / "results" / args.language / "coverage.json"
-        # TODO hardcoding path
-        with open("/home/krpratic/azure-sdk-tools/packages/python-packages/apiview-gpt/guidelines/python/guidelines.json", "r") as f:
+        guidelines_path = pathlib.Path(__file__).parent.parent / "guidelines" / args.language / "guidelines.json"
+        with open(str(guidelines_path), "r") as f:
             guidelines = json.load(f)
         guideline_rule_ids = [rule["id"] for rule in guidelines]
         difference = set(guideline_rule_ids).difference(rule_ids)
@@ -356,4 +355,4 @@ if __name__ == "__main__":
                 )
             )
 
-        print(f"\nCoverage for {args.language}: {len(rule_ids) / len(guideline_rule_ids) * 100:.2f}%")
+        print(f"\nTest coverage for {args.language}: {len(rule_ids) / len(guideline_rule_ids) * 100:.2f}%")
