@@ -222,7 +222,6 @@ if __name__ == "__main__":
     rule_ids = set()
 
     tests_directory = pathlib.Path(__file__).parent / "tests" / args.language
-    baseline_results = {}
 
     all_results = {}
     for file in tests_directory.glob("*.jsonl"):
@@ -317,7 +316,8 @@ if __name__ == "__main__":
 
         all_results[file.name] = eval_result
 
-    for name, result in all_results.items():
+    for name, test_results in all_results.items():
+        baseline_results = {}
         baseline_path = pathlib.Path(__file__).parent / "results" / args.language / name[:-1]
         
         if baseline_path.exists():
@@ -327,7 +327,7 @@ if __name__ == "__main__":
                     baseline_results[result['testcase']] = result
                 baseline_results["average_score"] = baseline_data[-1]["average_score"]
 
-        create_table(baseline_results, eval_result, name)
+        create_table(baseline_results, test_results, name)
 
     establish_baseline = input("\nDo you want to establish this as the new baseline? (y/n): ")
     if establish_baseline.lower() == "y":
