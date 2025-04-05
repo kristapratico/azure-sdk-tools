@@ -90,7 +90,7 @@ def calculate_overall_score(row: dict[str, Any]) -> float:
 
     exact_match_score = (row["outputs.custom_eval.true_positives"] /
                         row["outputs.custom_eval.total_violations"]
-                        if row["outputs.custom_eval.total_violations"] > 0 else 0.0)
+                        if row["outputs.custom_eval.total_violations"] > 0 else 1.0)
 
     # Only consider fuzzy matches if there are remaining unmatched violations
     remaining_violations = row["outputs.custom_eval.total_violations"] - row["outputs.custom_eval.true_positives"]
@@ -106,8 +106,11 @@ def calculate_overall_score(row: dict[str, Any]) -> float:
                           row["outputs.custom_eval.violations_found"]
                           if row["outputs.custom_eval.violations_found"] > 0 else 0.0)
 
-
-    groundedness_normalized = (row["outputs.groundedness.groundedness"] - 1) / 4
+    if row["outputs.custom_eval.total_violations"] == 0 and row["outputs.custom_eval.true_positives"] == 0:
+        # test with no violations / no violations found should get credit for groundedness
+        groundedness_normalized = 1.0
+    else:
+        groundedness_normalized = (row["outputs.groundedness.groundedness"] - 1) / 4
     similarity_normalized = (row["outputs.similarity.similarity"] - 1) / 4
 
     score = (
@@ -179,7 +182,8 @@ def create_table(baseline_results: dict[str, Any], eval_results: list[dict[str, 
     print("====================================================")
     print(f"\n\n✨ {file_name} results:\n")
     print(tabulate(terminal_rows, headers, tablefmt="simple"))
-    print(f"\n{file_name} average score: {eval_results[-1]['average_score']} {format_terminal_diff(eval_results[-1]['average_score'], baseline_results['average_score'])}\n\n")
+    if baseline_results:
+        print(f"\n{file_name} average score: {eval_results[-1]['average_score']} {format_terminal_diff(eval_results[-1]['average_score'], baseline_results['average_score'])}\n\n")
 
 
 if __name__ == "__main__":
@@ -194,7 +198,7 @@ if __name__ == "__main__":
         "--n",
         type=int,
         default=NUM_RUNS,
-        help="The number of runs to perform, with the best run results kept.",
+        help="The number of runs to perform, with the median of results kept.",
     )
 
     parser.add_argument(

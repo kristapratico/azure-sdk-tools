@@ -7,7 +7,7 @@ import os
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Create a test case for the given function.")
     parser.add_argument(
-        "--apiview_path",
+        "--apiview-path",
         type=str,
         required=True,
         help="The path to the txt file containing the APIview text",
@@ -19,13 +19,13 @@ if __name__ == "__main__":
         help="The language for the test case.",
     )
     parser.add_argument(
-        "--expected_path",
+        "--expected-path",
         type=str,
         required=True,
-        help="The expected output from the AI reviewer.",
+        help="The expected JSON output from the AI reviewer.",
     )
     parser.add_argument(
-        "--file_path",
+        "--file-path",
         type=str,
         required=True,
         help="The file path of the test case. Can be an existing test case file, or will create a new one.",
@@ -55,9 +55,9 @@ if __name__ == "__main__":
         for rule_id in violation["rule_ids"]:
             for rule in guidelines:
                 if rule["id"] == rule_id:
-                    context += f"\n{rule['text']}"
+                    if rule["text"] not in context:
+                        context += f"\n{rule['text']}"
 
-    # TODO should we remove tabs or keep them?
     test_case = {"testcase": args.name, "query": apiview_contents.replace("\t", ""), "language": args.language, "context": context, "response": json.dumps(expected_contents)}
 
     if os.path.exists(args.file_path):
