@@ -78,47 +78,41 @@ def review_apiview(query: str, language: str):
 
 
 def calculate_overall_score(row: dict[str, Any]) -> float:
-    """Calculate weighted score based on various metrics.
-    """
+    """Calculate weighted score based on various metrics."""
+
     weights = {
-        'exact_match_weight': 0.6,     # Perfect match - right rule, right line
-        'fuzzy_match_weight': 0.2,     # Fuzzy match - right rule, wrong line
-        'false_positive_penalty': 0.3, # Penalty for incorrect violations
-        'groundedness_weight': 0.15,   # Weight for staying grounded in guidelines
-        'similarity_weight': 0.05      # Smaller weight for similarity in expected vs actual responses
+        'exact_match_weight': 0.7,      # Exact match (rule id and line number)
+        'groundedness_weight': 0.2,     # Staying grounded in guidelines
+        'similarity_weight': 0.1,       # Similarity between expected and actual
+        'false_positive_penalty': 0.3,  # Penalty for false positives
+        'fuzzy_match_bonus': 0.2        # Bonus for fuzzy match (right rule, wrong line)
     }
 
-    exact_match_score = (row["outputs.custom_eval.true_positives"] /
-                        row["outputs.custom_eval.total_violations"]
-                        if row["outputs.custom_eval.total_violations"] > 0 else 1.0)
+    if row["outputs.custom_eval.total_violations"] == 0:
+        # tests with no violations are all or nothing
+        return 100.0 if row["outputs.custom_eval.violations_found"] == 0 else 0.0
 
-    # Only consider fuzzy matches if there are remaining unmatched violations
+    exact_match_score = (row["outputs.custom_eval.true_positives"] /
+                        row["outputs.custom_eval.total_violations"])
+
     remaining_violations = row["outputs.custom_eval.total_violations"] - row["outputs.custom_eval.true_positives"]
-    rule_match_score = (row["outputs.custom_eval.rule_matches_wrong_line"] /
+    fuzzy_match_score = (row["outputs.custom_eval.rule_matches_wrong_line"] /
                        remaining_violations
                        if remaining_violations > 0 else 0.0)
-
-    # Perfect match case - give full credit for exact + rule match weights
-    if exact_match_score == 1.0:
-        rule_match_score = 1.0
 
     false_positive_rate = (row["outputs.custom_eval.false_positives"] /
                           row["outputs.custom_eval.violations_found"]
                           if row["outputs.custom_eval.violations_found"] > 0 else 0.0)
 
-    if row["outputs.custom_eval.total_violations"] == 0 and row["outputs.custom_eval.true_positives"] == 0:
-        # test with no violations / no violations found should get credit for groundedness
-        groundedness_normalized = 1.0
-    else:
-        groundedness_normalized = (row["outputs.groundedness.groundedness"] - 1) / 4
+    groundedness_normalized = (row["outputs.groundedness.groundedness"] - 1) / 4
     similarity_normalized = (row["outputs.similarity.similarity"] - 1) / 4
 
     score = (
         weights['exact_match_weight'] * exact_match_score +
-        weights['fuzzy_match_weight'] * rule_match_score -
-        weights['false_positive_penalty'] * false_positive_rate +
         weights['groundedness_weight'] * groundedness_normalized +
-        weights['similarity_weight'] * similarity_normalized
+        weights['similarity_weight'] * similarity_normalized +
+        weights['fuzzy_match_bonus'] * fuzzy_match_score -
+        weights['false_positive_penalty'] * false_positive_rate
     )
 
     normalized_score = max(0, min(100, score * 100))
