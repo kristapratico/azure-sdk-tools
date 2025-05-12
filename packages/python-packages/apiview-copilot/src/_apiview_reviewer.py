@@ -144,7 +144,7 @@ class ApiViewReview:
             Optional[dict]: The result of the prompt execution, or None if an error occurred.
         """
         status_array[status_idx] = self.PROCESSING
-        print("\r" + "Evaluating prompts: " + "".join(status_array), end="", flush=True)
+        logger.error("\r" + "Evaluating prompts: " + "".join(status_array), end="", flush=True)
 
         try:
             # Run the prompt
@@ -159,13 +159,13 @@ class ApiViewReview:
 
             # Update status and return result
             status_array[status_idx] = self.SUCCESS
-            print("\r" + "Evaluating prompts: " + "".join(status_array), end="", flush=True)
+            logger.error("\r" + "Evaluating prompts: " + "".join(status_array), end="", flush=True)
             return result
 
         except Exception as e:
             status_array[status_idx] = self.FAILURE
-            print("\r" + "Evaluating prompts: " + "".join(status_array), end="", flush=True)
-            print(f"Error executing {task_name}: {str(e)}")
+            logger.error("\r" + "Evaluating prompts: " + "".join(status_array), end="", flush=True)
+            logger.error(f"Error executing {task_name}: {str(e)}")
             return None
 
     def _generate_comments(self):
@@ -200,7 +200,7 @@ class ApiViewReview:
         outline_content = self.target
 
         # Set up progress tracking
-        print("Processing sections: ", end="", flush=True)
+        logger.error("Processing sections: ", end="", flush=True)
         total_prompts = 1 + (len(sections_to_process) * 2) + 1  # 1 for summary, 1 for outline, 2 for each section
         prompt_status = [self.PENDING] * total_prompts
 
@@ -209,7 +209,7 @@ class ApiViewReview:
         original_handler = signal.getsignal(signal.SIGINT)
 
         def keyboard_interrupt_handler(signal, frame):
-            print("\n\nCancellation requested! Terminating process...")
+            logger.error("\n\nCancellation requested! Terminating process...")
             cancel_event.set()
             os._exit(1)
 
@@ -336,9 +336,9 @@ class ApiViewReview:
                                 comment["source"] = section_type
                             section_results[section_idx]["comments"].extend(result["comments"])
                 except Exception as e:
-                    print(f"Error processing {key}: {str(e)}")
+                    logger.error(f"Error processing {key}: {str(e)}")
 
-            print()  # Add newline after progress indicator
+            logger.error()  # Add newline after progress indicator
 
             # Merge results from all sections
             for section_idx, section_result in section_results.items():
@@ -347,7 +347,7 @@ class ApiViewReview:
                     section_result = ReviewResult(**section_result)
                     self.results.merge(section_result, section=section)
         except KeyboardInterrupt:
-            print("\n\nCancellation requested! Terminating process...")
+            logger.error("\n\nCancellation requested! Terminating process...")
             cancel_event.set()
             os._exit(1)
         finally:
@@ -374,7 +374,7 @@ class ApiViewReview:
 
         prompt_path = os.path.join(_PROMPTS_FOLDER, "merge_comments.prompty")
 
-        print(f"Deduplicating comments...")
+        logger.error(f"Deduplicating comments...")
 
         # Submit all batches to the executor for parallel processing
         futures = {}
@@ -401,14 +401,14 @@ class ApiViewReview:
                 merge_results = json.loads(response)
                 result_comments = merge_results.get("comments", [])
                 if len(result_comments) != 1:
-                    print(f"Error merging comments for line {line_no}: {merge_results}")
+                    logger.error(f"Error merging comments for line {line_no}: {merge_results}")
                     continue
                 merged_comment = result_comments[0]
                 merged_comment["source"] = "merged"
                 merged_comment_obj = Comment(**merged_comment)
                 unique_comments.append(merged_comment_obj)
             except Exception as e:
-                print(f"Error processing deduplication for line {line_no}: {str(e)}")
+                logger.error(f"Error processing deduplication for line {line_no}: {str(e)}")
 
         # Update the comments list with the unique comments
         self.results.comments = unique_comments
@@ -420,7 +420,7 @@ class ApiViewReview:
         filter_prompt_file = "final_comment_filter_single.prompty"
         filter_prompt_path = os.path.join(_PROMPTS_FOLDER, filter_prompt_file)
 
-        print(f"Filtering comments...")
+        logger.error(f"Filtering comments...")
 
         # Submit each comment to the executor for parallel processing
         futures = {}
@@ -447,10 +447,10 @@ class ApiViewReview:
                 else:
                     discard_comments.append(response_json)
             except Exception as e:
-                print(f"Error filtering comment at index {idx}: {str(e)}")
+                logger.error(f"Error filtering comment at index {idx}: {str(e)}")
 
         # Update the results with the filtered comments
-        print(f"Filtering completed. Kept {len(keep_comments)} comments. Discarded {len(discard_comments)} comments.")
+        logger.error(f"Filtering completed. Kept {len(keep_comments)} comments. Discarded {len(discard_comments)} comments.")
         self.results.comments = [Comment(**comment) for comment in keep_comments]
 
     def _run_prompt(self, prompt_path: str, inputs: dict, max_retries: int = 5) -> str:
@@ -479,7 +479,7 @@ class ApiViewReview:
             )
 
         def on_failure(exception, attempt):
-            print(
+            logger.error(
                 f"Failed to execute prompt {os.path.basename(prompt_path)} "
                 f"after {attempt} attempts: {str(exception)}"
             )
@@ -497,26 +497,26 @@ class ApiViewReview:
 
     def run(self) -> ReviewResult:
         try:
-            print(f"Generating {self._get_language_pretty_name()} review...")
+            logger.error(f"Generating {self._get_language_pretty_name()} review...")
             overall_start_time = time()
 
             # Track time for _generate_comments
             generate_start_time = time()
             self._generate_comments()
             generate_end_time = time()
-            print(f"  Generated comments in {generate_end_time - generate_start_time:.2f} seconds.")
+            logger.error(f"  Generated comments in {generate_end_time - generate_start_time:.2f} seconds.")
 
             # Track time for _deduplicate_comments
             deduplicate_start_time = time()
             self._deduplicate_comments()
             deduplicate_end_time = time()
-            print(f"  Deduplication completed in {deduplicate_end_time - deduplicate_start_time:.2f} seconds.")
+            logger.error(f"  Deduplication completed in {deduplicate_end_time - deduplicate_start_time:.2f} seconds.")
 
             # Track time for _filter_comments
             filter_start_time = time()
             self._filter_comments()
             filter_end_time = time()
-            print(f"  Filtering completed in {filter_end_time - filter_start_time:.2f} seconds.")
+            logger.error(f"  Filtering completed in {filter_end_time - filter_start_time:.2f} seconds.")
 
             # Add the summary to the results
             if self.summary:
@@ -524,10 +524,10 @@ class ApiViewReview:
             results = self.results.sorted()
 
             overall_end_time = time()
-            print(f"Review generated in {overall_end_time - overall_start_time:.2f} seconds.")
+            logger.error(f"Review generated in {overall_end_time - overall_start_time:.2f} seconds.")
 
             if self.semantic_search_failed:
-                print(f"{self.RED_TEXT}WARN: Semantic search failed for some chunks (see error.log).{self.RESET_COLOR}")
+                logger.error(f"{self.RED_TEXT}WARN: Semantic search failed for some chunks (see error.log).{self.RESET_COLOR}")
 
             return results
         finally:
@@ -572,7 +572,7 @@ class ApiViewReview:
             return context
         except Exception as e:
             # Log search errors
-            print(f"Error retrieving guidelines: {str(e)}")
+            logger.error(f"Error retrieving guidelines: {str(e)}")
             # Return empty context as fallback
             return None
 
