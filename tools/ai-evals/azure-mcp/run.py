@@ -24,9 +24,10 @@ from azure.identity import (
 dotenv.load_dotenv()
 
 # for best results, model judge should always be a different model from the one we are evaluating
-MODEL = "gpt-4o"
+MODEL = "gpt-4.1"
 MODEL_JUDGE = "o3-mini"
 API_VERSION = "2025-03-01-preview"
+SCORE_THRESHOLD = 0.8
 
 
 def in_ci() -> bool:
@@ -51,11 +52,14 @@ else:
 # Monkeypatch AsyncPrompty.load to accept token_credential
 # https://github.com/Azure/azure-sdk-for-python/issues/41295
 from azure.ai.evaluation._legacy.prompty import AsyncPrompty
+
 original_load = AsyncPrompty.load
+
 
 def patched_load(cls, source, **kwargs):
     """Patched version of AsyncPrompty.load that accepts token_credential parameter"""
     return original_load(source=source, token_credential=CREDENTIAL, **kwargs)
+
 
 AsyncPrompty.load = classmethod(patched_load)
 
@@ -63,9 +67,7 @@ AsyncPrompty.load = classmethod(patched_load)
 client = AzureOpenAI(
     azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
     api_version=API_VERSION,
-    azure_ad_token_provider=get_bearer_token_provider(
-        CREDENTIAL, "https://cognitiveservices.azure.com/.default"
-    ),
+    azure_ad_token_provider=get_bearer_token_provider(CREDENTIAL, "https://cognitiveservices.azure.com/.default"),
 )
 
 server_params = StdioServerParameters(
@@ -102,9 +104,7 @@ def reshape_tool_definitions(
     ]
 
 
-async def call_mcp_tool(
-    tool_call: chat.ChatCompletionMessageToolCall, function_args: dict[str, Any]
-) -> CallToolResult:
+async def call_mcp_tool(tool_call: chat.ChatCompletionMessageToolCall, function_args: dict[str, Any]) -> CallToolResult:
     async with stdio_client(server_params) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
@@ -122,6 +122,7 @@ async def make_request(
 ) -> tuple[list[chat.ChatCompletionMessage], list[chat.ChatCompletionMessageToolCall]]:
     answer = None
     response = messages[-1]
+
     while answer is None:
         tool_messages = []
         for tool_call in response.tool_calls:
@@ -138,9 +139,8 @@ async def make_request(
             )
         messages.extend(tool_messages)
 
-        response = client.chat.completions.create(
-            model=MODEL, messages=messages, tools=available_tools
-        )
+        response = client.chat.completions.create(model=MODEL, messages=messages, tools=available_tools)
+
         if response.choices[0].message.tool_calls:
             tool_calls_made.extend(response.choices[0].message.tool_calls)
         answer = response.choices[0].message.content
@@ -160,64 +160,45 @@ def evaluate_azure_mcp(query: str, expected_tool_calls: list):
         options = json.load(f)
 
     attempts = 0
+
     while True:
         attempts += 1
-        response = (
-            client.chat.completions.create(
-                model=MODEL, messages=messages, tools=available_tools
-            )
-            .choices[0]
-            .message
-        )
+        response = client.chat.completions.create(model=MODEL, messages=messages, tools=available_tools)
 
-        messages.append(response)
+        response_message = response.choices[0].message
+        messages.append(response_message)
 
-        if response.tool_calls or attempts > 5:
+        if response_message.tool_calls or attempts > 5:
             break  # Tool call made or exhausted attempts, proceed
 
         # Assistant asked a follow-up; generate a user reply using the options
-        followup_question = response.content
+        followup_question = response_message.content
         user_prompt = (
             f"You are the user. Given the following options: {json.dumps(options)}, "
             f"answer the assistant's question as concisely as possible: {followup_question}"
         )
-        response = (
-            client.chat.completions.create(
-                model=MODEL,
-                messages=[
-                    {"role": "system", "content": "You are a helpful user."},
-                    {"role": "user", "content": user_prompt},
-                ],
-            )
-            .choices[0]
-            .message
+        followup_response = client.chat.completions.create(
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": "You are a helpful user."},
+                {"role": "user", "content": user_prompt},
+            ],
         )
 
-        messages.append({"role": "user", "content": response.content})
+        messages.append({"role": "user", "content": followup_response.choices[0].message.content})
 
     tool_calls_made = []
-    if response.tool_calls is not None:
-        tool_calls_made.extend(response.tool_calls)
-        messages, tool_calls = asyncio.run(
-            make_request(messages, available_tools, tool_calls_made)
-        )
+    if response_message.tool_calls is not None:
+        tool_calls_made.extend(response_message.tool_calls)
+        messages, tool_calls = asyncio.run(make_request(messages, available_tools, tool_calls_made))
         tool_calls_made = reshape_tools(tool_calls)
 
     tool_defs = reshape_tool_definitions(available_tools)
 
     return {
-        "query": query,
         "tool_calls": tool_calls_made,
-        "response": [
-            msg.model_dump() if not isinstance(msg, dict) else msg for msg in messages
-        ],
+        "response": [msg.model_dump() if not isinstance(msg, dict) else msg for msg in messages],
         "tool_definitions": tool_defs,
-        "expected": expected_tool_calls,
-        "called_expected": any(
-            actual["name"] == expected
-            for actual in tool_calls_made
-            for expected in expected_tool_calls
-        ),
         "num_tool_calls_actual": len(tool_calls_made),
         "num_tool_calls_expected": len(expected_tool_calls),
     }
@@ -243,6 +224,70 @@ async def get_tools() -> list[dict[str, Any]]:
     return available_tools
 
 
+class MCPEval:
+
+    def __init__(self): ...
+
+    def get_failure_reasons(
+        self, tool_calls, correct_params, called_expected, num_tool_calls_actual, num_tool_calls_expected
+    ):
+        reasons = []
+
+        if len(tool_calls) == 0:
+            return "No tool calls were made"
+
+        if not called_expected:
+            reasons.append("Expected tool was not called")
+
+        if not correct_params:
+            reasons.append("Some parameters are missing or invalid")
+
+        if num_tool_calls_actual != num_tool_calls_expected:
+            reasons.append(
+                f"Number of tool calls mismatch (expected {num_tool_calls_expected}, got {num_tool_calls_actual})"
+            )
+
+        return "; ".join(reasons) if reasons else "Passed successfully"
+
+    def __call__(
+        self, tool_calls, tool_definitions, expected_tool_calls, num_tool_calls_actual, num_tool_calls_expected
+    ):
+
+        correct_params = False
+        for tool_call in tool_calls:
+            arguments = tool_call.get("arguments", {})
+            tool_def = [d for d in tool_definitions if d["name"] == tool_call["name"]]
+            if not tool_def:
+                break
+
+            tool_def = tool_def[0]
+            parameters = tool_def.get("parameters", {})
+            required = parameters.get("required", [])
+            properties = parameters.get("properties", {})
+
+            all_required_present = all(arg in arguments and arguments[arg] is not None for arg in required)
+            all_args_valid = all(arg in required or arg in properties for arg in arguments)
+            correct_params = all_required_present and all_args_valid
+
+        called_expected = (
+            any(actual["name"] == expected for actual in tool_calls for expected in expected_tool_calls),
+        )
+        reason = self.get_failure_reasons(
+            tool_calls, correct_params, called_expected, num_tool_calls_actual, num_tool_calls_expected
+        )
+        score = (
+            (0.5 if called_expected else 0.0)
+            + (0.3 if correct_params else 0.0)
+            + (0.2 if num_tool_calls_actual == num_tool_calls_expected else 0.0)
+        )
+        return {
+            "tool_call_accuracy": "Pass" if score >= SCORE_THRESHOLD else "Fail",
+            "reason": reason,
+            "score": score,
+            "score_threshold": SCORE_THRESHOLD,
+        }
+
+
 if __name__ == "__main__":
     azure_ai_project: AzureAIProject = {
         "subscription_id": os.environ["AZURE_SUBSCRIPTION_ID"],
@@ -256,19 +301,18 @@ if __name__ == "__main__":
         "api_version": API_VERSION,
     }
 
-    tool_call_accuracy = ToolCallAccuracyEvaluator(
-        model_config=model_config, is_reasoning_model=True
-    )
+    tool_call_accuracy = ToolCallAccuracyEvaluator(model_config=model_config, is_reasoning_model=True)
+    custom = MCPEval()
 
     test_file = pathlib.Path(__file__).parent / "data.jsonl"
     result = evaluate(
         data=str(test_file),
         evaluators={
-            "tool_call_accuracy": tool_call_accuracy,
+            "mcp": custom,
         },
         target=evaluate_azure_mcp,
         azure_ai_project=azure_ai_project,
-        credential=CREDENTIAL
+        credential=CREDENTIAL,
     )
+    print(f"Overall score: {result['metrics']['mcp.score']}")
     print(f"Evaluation result: {result['studio_url']}")
-
