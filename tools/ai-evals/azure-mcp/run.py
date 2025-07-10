@@ -270,7 +270,7 @@ class MCPEval:
             correct_params = all_required_present and all_args_valid
 
         called_expected = (
-            any(actual["name"] == expected for actual in tool_calls for expected in expected_tool_calls),
+            any(actual["name"] == expected for actual in tool_calls for expected in expected_tool_calls)
         )
         reason = self.get_failure_reasons(
             tool_calls, correct_params, called_expected, num_tool_calls_actual, num_tool_calls_expected
