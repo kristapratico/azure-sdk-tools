@@ -116,39 +116,61 @@ async def call_mcp_tool(tool_call: chat.ChatCompletionMessageToolCall, function_
 
 
 async def make_request(
-    messages: list[chat.ChatCompletionMessage],
+    messages: list,
     available_tools: list[dict[str, Any]],
     tool_calls_made: list[chat.ChatCompletionMessageToolCall],
-) -> tuple[list[chat.ChatCompletionMessage], list[chat.ChatCompletionMessageToolCall]]:
-    answer = None
-    response = messages[-1]
+) -> tuple[list, list[chat.ChatCompletionMessageToolCall]]:
+    
+    # Execute all tool calls
+    tool_messages = []
+    for tool_call in tool_calls_made:
+        function_args = json.loads(tool_call.function.arguments)
+        result = await call_mcp_tool(tool_call, function_args)
 
-    while answer is None:
-        tool_messages = []
-        for tool_call in response.tool_calls:
-            function_args = json.loads(tool_call.function.arguments)
-            result = await call_mcp_tool(tool_call, function_args)
+        # Handle different content types
+        content = ""
+        if result.content and len(result.content) > 0:
+            content_item = result.content[0]
+            # Try to get text content, fallback to string representation
+            try:
+                content = getattr(content_item, 'text', str(content_item))
+            except:
+                content = str(content_item)
 
-            tool_messages.append(
-                {
-                    "tool_call_id": tool_call.id,
-                    "role": "tool",
-                    "name": tool_call.function.name,
-                    "content": result.content[0].text,
-                }
-            )
-        messages.extend(tool_messages)
+        tool_messages.append(
+            {
+                "tool_call_id": tool_call.id,
+                "role": "tool",
+                "name": tool_call.function.name,
+                "content": content,
+            }
+        )
+    
+    # Add tool results to messages
+    messages.extend(tool_messages)
+    
+    return messages, tool_calls_made
 
-        response = client.chat.completions.create(model=MODEL, messages=messages, tools=available_tools)
 
-        if response.choices[0].message.tool_calls:
-            tool_calls_made.extend(response.choices[0].message.tool_calls)
-        answer = response.choices[0].message.content
-        messages.append(response.choices[0].message)
+def is_final_answer(query: str, content: str) -> bool:
+    """Use LLM to determine if the response is a final answer or asking for more information."""
+    judge_prompt = f"""
+    Determine if the following response is a final answer to a user's question or if it's asking for more information.
 
-        if answer is not None:
-            return messages, tool_calls_made
-        response = response.choices[0].message
+    User's question: "{query}"
+    Response: "{content}"
+
+    Reply with only "FINAL" if this is a final answer that addresses the user's request, or "QUESTION" if it's asking for SPECIFIC information necessary to answer the question.
+    """
+    
+    judge_response = client.chat.completions.create(
+        model=MODEL,
+        messages=[{"role": "user", "content": judge_prompt}],
+        max_tokens=10
+    )
+    
+    response_content = judge_response.choices[0].message.content
+    return "FINAL" in (response_content.upper() if response_content else "")
 
 
 def evaluate_azure_mcp(query: str, expected_tool_calls: list):
@@ -160,39 +182,51 @@ def evaluate_azure_mcp(query: str, expected_tool_calls: list):
         options = json.load(f)
 
     attempts = 0
+    max_attempts = 10
+    all_tool_calls_made = []
 
-    while True:
+    while attempts < max_attempts:
         attempts += 1
-        response = client.chat.completions.create(model=MODEL, messages=messages, tools=available_tools)
+        response = client.chat.completions.create(model=MODEL, messages=messages, tools=available_tools)  # type: ignore
 
         response_message = response.choices[0].message
-        messages.append(response_message)
+        messages.append(response_message)  # type: ignore
 
-        if response_message.tool_calls or attempts > 5:
-            break  # Tool call made or exhausted attempts, proceed
+        # If tool calls were made, execute them
+        if response_message.tool_calls:
+            all_tool_calls_made.extend(response_message.tool_calls)
+            messages, _ = asyncio.run(make_request(messages, available_tools, response_message.tool_calls))  # type: ignore
+            
+            # After tool execution, continue the conversation to see if assistant has follow-up questions
+            continue
 
-        # Assistant asked a follow-up; generate a user reply using the options
-        followup_question = response_message.content
-        user_prompt = (
-            f"You are the user. Given the following options: {json.dumps(options)}, "
-            f"answer the assistant's question as concisely as possible: {followup_question}"
-        )
-        followup_response = client.chat.completions.create(
-            model=MODEL,
-            messages=[
-                {"role": "system", "content": "You are a helpful user."},
-                {"role": "user", "content": user_prompt},
-            ],
-        )
+        # If no tool calls and the assistant has content (might be follow-up question or final answer)
+        if response_message.content and not response_message.tool_calls:
+            # Use LLM judge to determine if this is a final answer
+            if is_final_answer(query, response_message.content):
+                # This is a final answer, break the loop
+                break
+            else:
+                followup_question = response_message.content
+                user_prompt = (
+                    f"You are the user. Given the following options: {json.dumps(options)}, "
+                    f"answer the assistant's question as concisely as possible: {followup_question}."
+                )
+                followup_response = client.chat.completions.create(
+                    model=MODEL,
+                    messages=[
+                        {"role": "system", "content": "You are a helpful user."},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                )
 
-        messages.append({"role": "user", "content": followup_response.choices[0].message.content})
+                messages.append({"role": "user", "content": followup_response.choices[0].message.content})  # type: ignore
+                continue
 
-    tool_calls_made = []
-    if response_message.tool_calls is not None:
-        tool_calls_made.extend(response_message.tool_calls)
-        messages, tool_calls = asyncio.run(make_request(messages, available_tools, tool_calls_made))
-        tool_calls_made = reshape_tools(tool_calls)
+        # If we get here, the assistant has finished (no tool calls, no questions)
+        break
 
+    tool_calls_made = reshape_tools(all_tool_calls_made)
     tool_defs = reshape_tool_definitions(available_tools)
 
     return {
@@ -266,8 +300,10 @@ class MCPEval:
             properties = parameters.get("properties", {})
 
             all_required_present = all(arg in arguments and arguments[arg] is not None for arg in required)
-            all_args_valid = all(arg in required or arg in properties for arg in arguments)
-            correct_params = all_required_present and all_args_valid
+            # TODO tool definitions changed - part of first MCP call now
+            # all_args_valid = all(arg in required or arg in properties for arg in arguments)
+            # correct_params = all_required_present and all_args_valid
+            correct_params = all_required_present
 
         called_expected = (
             any(actual["name"] == expected for actual in tool_calls for expected in expected_tool_calls)
@@ -315,4 +351,7 @@ if __name__ == "__main__":
         credential=CREDENTIAL,
     )
     print(f"Overall score: {result['metrics']['mcp.score']}")
-    print(f"Evaluation result: {result['studio_url']}")
+    if 'studio_url' in result:
+        print(f"Evaluation result: {result['studio_url']}")
+    else:
+        print("Evaluation completed (no studio URL available)")

@@ -3,8 +3,11 @@ import re
 import os
 import json
 import requests
+import argparse
 from collections import defaultdict
+import dotenv
 
+dotenv.load_dotenv()
 
 # Define the variable mappings
 variable_mappings = {
@@ -92,7 +95,7 @@ def download_markdown_file(url):
         return None
 
 
-def parse_markdown_and_convert_to_jsonl(markdown_content):
+def parse_markdown_and_convert_to_jsonl(markdown_content, filter_service_names=None):
     """Parse the markdown content and convert it to JSONL format"""
     # Split the markdown content by sections (## headers)
     sections = re.split(r'##\s+', markdown_content)
@@ -109,6 +112,11 @@ def parse_markdown_and_convert_to_jsonl(markdown_content):
         
         # Extract section title and content
         lines = section.strip().split('\n')
+        section_title = lines[0].strip() if lines else ""
+        
+        # If filter_service_names is specified, only process sections that match
+        if filter_service_names and not any(section_title.lower() == service.lower().strip() for service in filter_service_names):
+            continue
         
         # Find the table content (lines between |:-----|:------|)
         table_start = False
@@ -138,11 +146,45 @@ def parse_markdown_and_convert_to_jsonl(markdown_content):
                 continue
                 
             tool_name, test_prompt = cells
+            
+            # Parse the tool name to extract service and command
+            # For tool names like "azmcp-foundry-models-list", we want ["foundry", "foundry_models_list"]
+            expected_tool_calls = []
+            
+            if tool_name.startswith('azmcp-'):
+                # Remove the "azmcp-" prefix and work with the rest
+                remaining = tool_name[6:]  # Remove "azmcp-"
+                
+                # Split by dashes and take the first part as service
+                parts = remaining.split('-')
+                if len(parts) > 0:
+                    service_name = parts[0]  # e.g., "foundry"
+                    expected_tool_calls.append(service_name)
+                    
+                    # Create the full command name by joining all parts with underscores
+                    full_command = '_'.join(parts)  # e.g., "foundry_models_list"
+                    expected_tool_calls.append(full_command)
+            else:
+                # For other formats, use the original logic
+                if '-' in tool_name:
+                    service_name = tool_name.split('-')[0]
+                    expected_tool_calls.append(service_name)
+                    full_tool_name = tool_name.replace('-', '_')
+                    expected_tool_calls.append(full_tool_name)
+                elif '_' in tool_name:
+                    service_name = tool_name.split('_')[0]
+                    expected_tool_calls.append(service_name)
+                    expected_tool_calls.append(tool_name)
+                else:
+                    # If no separator, just use the tool name as both service and command
+                    expected_tool_calls.append(tool_name)
+                    expected_tool_calls.append(tool_name)
+                
             test_prompt = test_prompt.replace('\\<', '<').replace('\\>', '>')
             # Create a JSON object for each entry
             entry = {
                 "query": test_prompt,
-                "expected_tool_calls": [tool_name]
+                "expected_tool_calls": expected_tool_calls
             }
             
             results.append(entry)
@@ -200,9 +242,23 @@ def log_unmapped_placeholders(unmapped_placeholders):
 
 
 def main():
+    # Set up command line argument parsing
+    parser = argparse.ArgumentParser(description='Download and convert e2e test prompts to JSONL format')
+    parser.add_argument('--service', type=str, help='Filter results to only include entries for the specified service(s) (H2 headers). Use comma-separated values for multiple services.')
+    parser.add_argument('--output', '-o', type=str, default='data.jsonl', help='Output JSONL file name (default: data.jsonl)')
+
+    args = parser.parse_args()
+    
     # Define source URL and output file
     source_url = "https://raw.githubusercontent.com/Azure/azure-mcp/refs/heads/main/e2eTests/e2eTestPrompts.md"
-    output_file = "data5.jsonl"
+    output_file = args.output
+    
+    # Parse service names if provided
+    service_names = None
+    if args.service:
+        service_names = [service.strip() for service in args.service.split(',')]
+        # Don't modify the output filename when filtering by services
+        # Keep it as data.jsonl to combine all selected services
 
     # Download the markdown file
     print(f"Downloading latest e2e test prompts from: {source_url}")
@@ -211,9 +267,18 @@ def main():
     if markdown_content is None:
         return
         
-    print("Parsing markdown and converting to JSONL...")
+    if service_names:
+        print(f"Parsing markdown and converting to JSONL (filtering for services: {', '.join(service_names)})...")
+    else:
+        print("Parsing markdown and converting to JSONL...")
+        
     # Parse the markdown and convert to JSONL
-    jsonl_data = parse_markdown_and_convert_to_jsonl(markdown_content)
+    jsonl_data = parse_markdown_and_convert_to_jsonl(markdown_content, service_names)
+    
+    if service_names and not jsonl_data:
+        print(f"⚠️  WARNING: No entries found for services '{', '.join(service_names)}'. Please check the service name spelling.")
+        print("Available services can be found as H2 headers (##) in the markdown file.")
+        return
     
     print("Replacing placeholders with fake values...")
     # Replace placeholders and track unmapped ones
@@ -225,9 +290,9 @@ def main():
     # Report results
     print(f"\n✅ Conversion complete!")
     print(f"📄 {len(processed_data)} entries written to {output_file}")
-    print(f"🔧 Found {len(set(entry['expected_tool_calls'][0] for entry in processed_data))} unique tool names")
-    print(f"🔄 {len(variable_mappings)} placeholder mappings applied")
-    
+    if service_names:
+        print(f"🎯 Filtered for services: {', '.join(service_names)}")
+
     # Log any unmapped placeholders
     log_unmapped_placeholders(unmapped_placeholders)
 

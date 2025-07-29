@@ -2,6 +2,7 @@
     "subscription": "Azure SDK Developer Playground",
     "resource_group": "my-resource-group",
     "storage account": "aifoundrystorageshared",
+    "foundry resource": "aifoundry",
     "cosmos resource": "archagent-cosmos",
     "database": "guidelines",
     "appconfig": "appconfig",
